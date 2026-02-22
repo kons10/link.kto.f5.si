@@ -1,49 +1,66 @@
 import csv
 import os
 
-# HTMLのテンプレート
-INDEX_TEMPLATE = """
-<!DOCTYPE html>
+# 設定
+CSV_FILE = 'links.csv'
+INDEX_FILE = 'index.html'
+
+def generate():
+    links = []
+    
+    # CSVファイルを読み込む
+    with open(CSV_FILE, mode='r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            links.append(row)
+
+    # 各短縮リンクのディレクトリと転送用index.htmlを作成
+    for link in links:
+        path = link['path'].lstrip('/')
+        url = link['url']
+        
+        os.makedirs(path, exist_ok=True)
+        
+        with open(os.path.join(path, 'index.html'), 'w', encoding='utf-8') as f:
+            f.write(f'<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url={url}"><script>window.location.href="{url}"</script><title>Redirecting...</title></head><body>Redirecting to <a href="{url}">{url}</a></body></html>')
+
+    # --- ここから index.html (一覧ページ) 生成機能 ---
+    
+    html_content = """<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>短縮リンク一覧</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link List</title>
     <style>
-        body {{ font-family: sans-serif; margin: 20px; }}
-        table {{ border-collapse: collapse; width: 100%; }}
-        th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
-        th {{ background-color: #f4f4f4; }}
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { border-bottom: 2px solid #eee; }
+        ul { list-edge: none; padding: 0; }
+        li { margin-bottom: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+        a { color: #007bff; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .path { color: #666; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <h1>短縮リンク一覧</h1>
-    <table>
-        <tr><th>短縮名</th><th>リンク先URL</th></tr>
-        {rows}
-    </table>
-</body>
-</html>
+    <ul>
 """
 
-def generate():
-    rows_html = ""
+    for link in links:
+        path = link['path']
+        url = link['url']
+        # 一覧に表示するリンクのリストを追加
+        html_content += f'        <li><a href="{path}">{path}</a> <span class="path">→ {url}</span></li>\n'
+
+    html_content += """    </ul>
+</body>
+</html>"""
+
+    with open(INDEX_FILE, 'w', encoding='utf-8') as f:
+        f.write(html_content)
     
-    # links.csv を読み込む
-    with open('links.csv', 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if not row: continue
-            short_name, target_url = row[0], row[1]
-            
-            # 各リンク用のディレクトリ作成などの既存処理がここにある想定
-            # ...
-            
-            # 一覧ページ用の行を作成
-            rows_html += f'<tr><td><a href="./{short_name}/">{short_name}</a></td><td>{target_url}</td></tr>'
+    print(f"Generated {len(links)} links and {INDEX_FILE}")
 
-    # index.html を書き出す
-    with open('index.html', 'w', encoding='utf-8') as f:
-        f.write(INDEX_TEMPLATE.format(rows=rows_html))
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     generate()
